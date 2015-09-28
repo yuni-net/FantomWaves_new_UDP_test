@@ -76,6 +76,12 @@ void God::prepare(int & state)
 
 void God::sending(int & state)
 {
+	std::string request =
+		std::string("{ ") +
+		"\"signature\": \"original message\", " +
+		"\"command\": \"I wanna match another\"" +
+		// todo
+		" }";
 	fw::Bindata data;
 	data.add(std::string("original matching"));
 	data.add(std::string("I wanna match the another"));
