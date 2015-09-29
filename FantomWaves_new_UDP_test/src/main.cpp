@@ -209,7 +209,13 @@ void God::waiting_p2p(int & state)
 
 void God::set_another_info(picojson::object & root)
 {
-	// todo
+	std::string ip_text = root["global_ip"].get<std::string>();
+	int port = int(root["global_port"].get<double>());
+	fw::IP ip;
+	sockaddr_in address;
+	address.sin_addr.S_un.S_addr = inet_addr(ip_text.c_str());
+	ip.set(address);
+	another_info.set(ip, port);
 }
 
 
