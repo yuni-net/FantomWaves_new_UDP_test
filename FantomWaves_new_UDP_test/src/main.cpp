@@ -114,14 +114,20 @@ void God::waiting(int & state)
 		peer.pop_received_data(data, from);
 		if (from != server_info)
 		{
+			std::cout << "you got a message from not server." << std::endl;
 			continue;
 		}
 		
 		data.buffer()[data.bytes() - 1] = '\0';
+
+		std::cout << "you got a message:" << std::endl;
+		std::cout << data.buffer() << std::endl;
+
 		picojson::value json_data;
 		std::string error = picojson::parse(json_data, data.buffer());
 		if (error.empty() == false)
 		{
+			std::cout << "that's not json style." << std::endl;
 			continue;
 		}
 
@@ -130,6 +136,7 @@ void God::waiting(int & state)
 		const std::string & signature = root["signature"].get<std::string>();
 		if (signature != "original message")
 		{
+			std::cout << "invalid signature." << std::endl;
 			continue;
 		}
 
@@ -148,6 +155,8 @@ void God::waiting(int & state)
 			set_another_info(root);
 			return;
 		}
+
+		std::cout << "invalid command." << std::endl;
 	}
 
 	auto now_time = time(NULL);
