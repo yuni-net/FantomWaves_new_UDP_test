@@ -1,5 +1,6 @@
 #include <iostream>
 #include <FantomWaves.h>
+#include "picojson.h"
 
 struct State
 {
@@ -31,10 +32,11 @@ public:
 
 private:
 	fw::NetSurfer server_info;
-	fw::UDP_cliant cliant;
 	fw::NetSurfer another_info;
 	time_t began_time;
 	fw::P2P peer;
+
+	void set_another_info(picojson::object & root);
 };
 
 
@@ -58,7 +60,7 @@ void God::input()
 
 void God::prepare(int & state)
 {
-	if (cliant.init(server_info))
+	if (peer.start())
 	{
 		state = State::sending;
 		return;
@@ -77,15 +79,16 @@ void God::prepare(int & state)
 void God::sending(int & state)
 {
 	std::string request =
-		std::string("{ ") +
-		"\"signature\": \"original message\", " +
-		"\"command\": \"I wanna match another\"" +
-		// todo
+		fw::cnct() <<
+		"{ " <<
+		"\"signature\": \"original message\", " <<
+		"\"command\": \"I wanna match another\", " <<
+		"\"local_ip\": \"" << fw::NetWork::get_my_address_text(0) << "\", " <<
+		"\"local_port\": \"" << peer.get_port() << "\"" <<=
 		" }";
 	fw::Bindata data;
-	data.add(std::string("original matching"));
-	data.add(std::string("I wanna match the another"));
-	if (cliant.send(data))
+	data.add(request);
+	if (peer.send(server_info, data))
 	{
 		state = State::waiting;
 		began_time = time(NULL);
@@ -104,71 +107,70 @@ void God::sending(int & state)
 
 void God::waiting(int & state)
 {
-	if (cliant.did_receive())
+	while(peer.are_there_any_left_datas())
 	{
 		fw::Bindata data;
-		cliant.pop_received_data(data);
-		std::string signature;
-		data >> signature;
-		if (signature != "original matching")
+		fw::NetSurfer from;
+		peer.pop_received_data(data, from);
+		if (from != server_info)
 		{
-			return;
+			continue;
+		}
+		
+		data.buffer()[data.bytes() - 1] = '\0';
+		picojson::value json_data;
+		std::string error = picojson::parse(json_data, data.buffer());
+		if (error.empty() == false)
+		{
+			continue;
 		}
 
-		std::string command;
-		data >> command;
+		picojson::object & root = json_data.get<picojson::object>();
 
-		if (command == "plz wait another")
+		const std::string & signature = root["signature"].get<std::string>();
+		if (signature != "original message")
+		{
+			continue;
+		}
+
+		const std::string & command = root["command"].get<std::string>();
+		if (command == "wait another")
 		{
 			std::cout << "対戦相手が現れるのを待っています。しばらくお待ちください…" << std::endl;
+			began_time = time(NULL);
+			continue;
 		}
 
-		if (command != "you matched with...")
+		if (command == "you can match with ...")
 		{
+			state = State::prepare_p2p;
+			std::cout << "対戦相手が見つかりました。接続を開始します…" << std::endl;
+			set_another_info(root);
 			return;
 		}
-
-		data >> another_info;
-		state = State::prepare_p2p;
-		std::cout << "対戦相手が見つかりました。接続を開始します…" << std::endl;
 	}
-	else
+
+	auto now_time = time(NULL);
+	if (now_time - began_time >= 6)
 	{
-		auto now_time = time(NULL);
-		if (now_time - began_time >= 6)
+		std::cout << "サーバーからの応答がないようです。" << std::endl;
+		std::cout << "もう一度通信を試みますか？[yes, no]" << std::endl;
+		std::string text;
+		std::cin >> text;
+		if (text == "yes")
 		{
-			std::cout << "サーバーからの応答がないようです。" << std::endl;
-			std::cout << "もう一度通信を試みますか？[yes, no]" << std::endl;
-			std::string text;
-			std::cin >> text;
-			if (text == "yes")
-			{
-				state = State::sending;
-			}
-			else
-			{
-				began_time = now_time;
-			}
+			state = State::sending;
+		}
+		else
+		{
+			began_time = now_time;
 		}
 	}
 }
 
 void God::prepare_p2p(int & state)
 {
-	if (peer.start())
-	{
-		state = State::sending_p2p;
-		return;
-	}
-
-	std::cout << "対戦相手との通信準備中にエラーが発生しました。" << std::endl;
-	std::cout << "もう一度通信を試みますか？[yes, no]" << std::endl;
-	std::string text;
-	std::cin >> text;
-	if (text != "yes")
-	{
-		state = State::finish;
-	}
+	state = State::sending_p2p;
 }
 
 void God::sending_p2p(int & state)
@@ -205,6 +207,16 @@ void God::waiting_p2p(int & state)
 	}
 }
 
+void God::set_another_info(picojson::object & root)
+{
+	std::string ip_text = root["global_ip"].get<std::string>();
+	int port = int(root["global_port"].get<double>());
+	fw::IP ip;
+	sockaddr_in address;
+	address.sin_addr.S_un.S_addr = inet_addr(ip_text.c_str());
+	ip.set(address);
+	another_info.set(ip, port);
+}
 
 
 
