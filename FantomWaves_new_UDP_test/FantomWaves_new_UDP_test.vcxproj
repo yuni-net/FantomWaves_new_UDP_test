@@ -85,10 +85,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\monojson.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\monojson.h" />
     <ClInclude Include="src\picojson.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
