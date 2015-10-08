@@ -116,14 +116,11 @@ void God::waiting(int & state)
 		fw::NetSurfer from;
 		peer.pop_received_data(data, from);
 
+		data.add(std::string());	// •¶Žš—ñ‰»‚·‚é‚½‚ß
 		std::cout << "data bytes: " << data.bytes() << std::endl;
-		if (data.bytes() > 0)
-		{
-			data.buffer()[data.bytes() - 1] = '\0';
-			std::cout << data.buffer() << std::endl;
-		}
+		std::cout << "received data: " << std::endl;
+		std::cout << data.buffer() << std::endl;
 
-		data.buffer()[data.bytes() - 1] = '\0';
 		picojson::value json_data;
 		std::string error = picojson::parse(json_data, data.buffer());
 		if (error.empty() == false)
