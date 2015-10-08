@@ -90,6 +90,7 @@ void God::sending(int & state)
 	data.add(request);
 	if (peer.send(server_info, data))
 	{
+		std::cout << "I send the request" << std::endl;
 		state = State::waiting;
 		began_time = time(NULL);
 		return;
@@ -109,14 +110,19 @@ void God::waiting(int & state)
 {
 	while(peer.are_there_any_left_datas())
 	{
+		std::cout << "you got a message" << std::endl;
+
 		fw::Bindata data;
 		fw::NetSurfer from;
 		peer.pop_received_data(data, from);
-		if (from != server_info)
+
+		std::cout << "data bytes: " << data.bytes() << std::endl;
+		if (data.bytes() > 0)
 		{
-			continue;
+			data.buffer()[data.bytes() - 1] = '\0';
+			std::cout << data.buffer() << std::endl;
 		}
-		
+
 		data.buffer()[data.bytes() - 1] = '\0';
 		picojson::value json_data;
 		std::string error = picojson::parse(json_data, data.buffer());
