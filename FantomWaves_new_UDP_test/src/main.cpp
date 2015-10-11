@@ -60,20 +60,7 @@ void God::input()
 
 void God::prepare(int & state)
 {
-	if (peer.start())
-	{
-		state = State::sending;
-		return;
-	}
-
-	std::cout << "ネットワーク通信準備中にエラーが発生しました。" << std::endl;
-	std::cout << "もう一度通信を試みますか？[yes, no]" << std::endl;
-	std::string text;
-	std::cin >> text;
-	if (text != "yes")
-	{
-		state = State::finish;
-	}
+	state = State::sending;
 }
 
 void God::sending(int & state)
@@ -157,22 +144,6 @@ void God::waiting(int & state)
 		std::cout << "invalid command." << std::endl;
 	}
 
-	auto now_time = time(NULL);
-	if (now_time - began_time >= 6)
-	{
-		std::cout << "サーバーからの応答がないようです。" << std::endl;
-		std::cout << "もう一度通信を試みますか？[yes, no]" << std::endl;
-		std::string text;
-		std::cin >> text;
-		if (text == "yes")
-		{
-			state = State::sending;
-		}
-		else
-		{
-			began_time = now_time;
-		}
-	}
 }
 
 void God::prepare_p2p(int & state)
@@ -182,8 +153,18 @@ void God::prepare_p2p(int & state)
 
 void God::sending_p2p(int & state)
 {
+	std::cout << "送信したいメッセージを入力してください" << std::endl;
+	std::string message;
+	std::cin >> message;
+
+	if (message == "")
+	{
+		state = State::waiting_p2p;
+		return;
+	}
+
 	fw::Bindata data;
-	data.add(std::string("hello"));
+	data.add(message);
 	if (peer.send(another_info, data))
 	{
 		state = State::waiting_p2p;
@@ -212,6 +193,8 @@ void God::waiting_p2p(int & state)
 		std::cout << "you got a message:" << std::endl;
 		std::cout << message << std::endl;
 	}
+
+	state = State::sending_p2p;
 }
 
 void God::set_another_info(picojson::object & root)
